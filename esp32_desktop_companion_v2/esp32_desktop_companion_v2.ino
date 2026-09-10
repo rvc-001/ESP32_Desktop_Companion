@@ -1,6 +1,8 @@
 
 #include <Arduino_GFX_Library.h>
 #include <Adafruit_GFX.h>
+#include "rabbit_sprites.h"
+#include "app_icons.h"
 
 // ============================================================
 // Waveshare ESP32-S3-LCD-2 (NON-TOUCH) Deskoo V2
@@ -89,14 +91,14 @@ bool songPlaying = false;
 int deckSelection = 0;
 const uint8_t DECK_COUNT = 9;
 const char* deckNames[DECK_COUNT] = {
-  "WhatsApp", "Zen Browser", "VS Code",
-  "Apple Music", "Previous Track", "Play/Pause",
-  "Next Track", "Lock PC", "Shutdown"
+  "WhatsApp", "Zen Browser", "Brave",
+  "Apple Music", "VS Code", "Antigravity",
+  "File Explorer", "Notepad", "Lock PC"
 };
 const char* deckLabels[DECK_COUNT] = {
-  "WhatsApp", "Zen Browser", "VS Code",
-  "Apple Music", "Prev", "Play/Pause",
-  "Next", "Lock PC", "Shutdown"
+  "WhatsApp", "Zen Browser", "Brave",
+  "Apple Music", "VS Code", "Antigravity",
+  "Explorer", "Notepad", "Lock PC"
 };
 
 #define COVER_SIZE 64
@@ -389,119 +391,73 @@ void drawMusicPage() {
 // ----------------------- DECK PAGE ----------------------------
 
 void drawSimpleIcon(int idx, int cx, int cy, uint16_t fg) {
+  const uint16_t* icon_data = nullptr;
   switch (idx) {
-    case 0: // WhatsApp
-      frame.fillCircle(cx, cy, 16, C_WHATSAPP);
-      frame.fillTriangle(cx - 7, cy + 11, cx - 13, cy + 18, cx - 2, cy + 14, C_WHATSAPP);
-      drawRing(cx, cy, 11, 2, C_WHITE);
-      frame.fillTriangle(cx - 4, cy + 8, cx - 9, cy + 14, cx + 1, cy + 10, C_WHITE);
-      drawThickLine(cx - 5, cy - 5, cx + 2, cy + 5, 2, C_WHITE);
-      drawThickLine(cx + 2, cy + 5, cx + 8, cy + 1, 2, C_WHITE);
-      frame.fillCircle(cx - 5, cy - 5, 2, C_WHATSAPP);
-      frame.fillCircle(cx + 8, cy + 1, 2, C_WHATSAPP);
-      break;
-    case 1: // Zen Browser
-      frame.fillRoundRect(cx - 17, cy - 17, 34, 34, 9, C_ZEN_BLACK);
-      frame.drawRoundRect(cx - 17, cy - 17, 34, 34, 9, C_TILE_LINE);
-      frame.fillRoundRect(cx - 10, cy - 9, 20, 6, 3, C_ZEN_MARK);
-      frame.fillCircle(cx + 10, cy - 6, 3, C_ZEN_MARK);
-      drawThickLine(cx + 8, cy - 5, cx - 8, cy + 9, 4, C_ZEN_MARK);
-      frame.fillRoundRect(cx - 7, cy + 7, 18, 6, 3, C_ZEN_MARK);
-      break;
-    case 2: // Visual Studio Code
-      frame.fillRoundRect(cx - 17, cy - 17, 34, 34, 8, C_VSCODE_D);
-      frame.fillTriangle(cx - 14, cy, cx - 4, cy - 10, cx - 4, cy + 10, C_WHITE);
-      frame.fillTriangle(cx - 4, cy - 10, cx + 14, cy - 16, cx + 14, cy + 16, C_VSCODE);
-      frame.fillTriangle(cx - 4, cy + 10, cx + 14, cy + 16, cx + 14, cy - 16, C_BLUE);
-      frame.drawLine(cx - 12, cy, cx - 5, cy - 7, C_VSCODE);
-      frame.drawLine(cx - 12, cy, cx - 5, cy + 7, C_VSCODE);
-      frame.drawLine(cx + 5, cy - 7, cx + 12, cy - 12, C_WHITE);
-      frame.drawLine(cx + 5, cy + 7, cx + 12, cy + 12, C_WHITE);
-      break;
-    case 3: // Apple Music
-      fillRoundGradientRect(cx - 17, cy - 17, 34, 34, 9, C_APPLE_TOP, C_APPLE_BOT);
-      frame.fillCircle(cx - 8, cy + 9, 6, C_WHITE);
-      frame.fillCircle(cx + 8, cy + 6, 6, C_WHITE);
-      frame.fillRoundRect(cx - 3, cy - 6, 5, 16, 2, C_WHITE);
-      frame.fillRoundRect(cx + 13, cy - 10, 5, 16, 2, C_WHITE);
-      frame.fillTriangle(cx - 3, cy - 10, cx + 18, cy - 14, cx + 18, cy - 8, C_WHITE);
-      frame.fillTriangle(cx - 3, cy - 10, cx - 3, cy - 4, cx + 18, cy - 8, C_WHITE);
-      break;
-    case 4: // previous track
-      frame.fillCircle(cx, cy, 17, C_PANEL2);
-      frame.fillTriangle(cx + 9, cy - 11, cx + 9, cy + 11, cx - 2, cy, C_WHITE);
-      frame.fillTriangle(cx - 2, cy - 11, cx - 2, cy + 11, cx - 13, cy, C_WHITE);
-      frame.fillRoundRect(cx - 16, cy - 11, 4, 22, 2, C_CYAN);
-      break;
-    case 5: // play/pause
-      frame.fillCircle(cx, cy, 17, C_GREEN);
-      frame.fillTriangle(cx - 7, cy - 10, cx - 7, cy + 10, cx + 6, cy, C_BLACK);
-      frame.fillRoundRect(cx + 8, cy - 10, 4, 20, 2, C_BLACK);
-      frame.fillRoundRect(cx + 15, cy - 10, 4, 20, 2, C_BLACK);
-      break;
-    case 6: // next track
-      frame.fillCircle(cx, cy, 17, C_PANEL2);
-      frame.fillTriangle(cx - 9, cy - 11, cx - 9, cy + 11, cx + 2, cy, C_WHITE);
-      frame.fillTriangle(cx + 2, cy - 11, cx + 2, cy + 11, cx + 13, cy, C_WHITE);
-      frame.fillRoundRect(cx + 13, cy - 11, 4, 22, 2, C_CYAN);
-      break;
-    case 7: // lock
-      frame.fillRoundRect(cx - 15, cy - 1, 30, 18, 4, C_YELLOW);
-      drawRing(cx, cy - 2, 10, 3, C_YELLOW);
-      frame.fillRect(cx - 9, cy - 2, 18, 7, C_TILE_BG);
-      frame.fillCircle(cx, cy + 7, 3, C_BLACK);
-      frame.fillRoundRect(cx - 1, cy + 8, 3, 5, 1, C_BLACK);
-      break;
-    case 8: // power
-      frame.fillCircle(cx, cy, 17, 0x3000);
-      drawRing(cx, cy + 2, 13, 3, C_RED);
-      frame.fillRect(cx - 5, cy - 16, 10, 13, 0x3000);
-      drawThickLine(cx, cy - 14, cx, cy + 1, 2, C_RED);
-      break;
+    case 0: icon_data = ICON_WHATSAPP; break;
+    case 1: icon_data = ICON_ZEN; break;
+    case 2: icon_data = ICON_BRAVE; break;
+    case 3: icon_data = ICON_MUSIC; break;
+    case 4: icon_data = ICON_VSCODE; break;
+    case 5: icon_data = ICON_ANTIGRAVITY; break;
+    case 6: icon_data = ICON_FILE_EXPLORER; break;
+    case 7: icon_data = ICON_NOTEPAD; break;
+    case 8: icon_data = ICON_LOCK; break;
+  }
+  if (icon_data) {
+    int startX = cx - APP_ICON_SIZE / 2;
+    int startY = cy - APP_ICON_SIZE / 2;
+    for (int y = 0; y < APP_ICON_SIZE; y++) {
+      for (int x = 0; x < APP_ICON_SIZE; x++) {
+        uint16_t color = pgm_read_word(&icon_data[y * APP_ICON_SIZE + x]);
+        if (color != 0x0000) {
+          frame.drawPixel(startX + x, startY + y, color);
+        }
+      }
+    }
   }
 }
 
 void drawDeckTile(int idx, int x, int y) {
   bool selected = idx == deckSelection;
   uint16_t bg = selected ? C_TILE_SEL : C_TILE_BG;
+  int tw = 98;
+  int th = 62;
 
   if (selected) {
     // Multi-layer outer glow halo
-    frame.drawRoundRect(x - 2, y - 2, 98, 54, 7, lerp565(C_CYAN, C_BLACK, 200));
-    frame.drawRoundRect(x - 1, y - 1, 96, 52, 6, lerp565(C_CYAN, C_BLACK, 130));
-    frame.fillRoundRect(x, y, 94, 50, 5, bg);
-    frame.drawRoundRect(x, y, 94, 50, 5, C_CYAN);
-    frame.drawRoundRect(x + 1, y + 1, 92, 48, 4, lerp565(C_CYAN, C_WHITE, 90));
+    frame.drawRoundRect(x - 2, y - 2, tw + 4, th + 4, 7, lerp565(C_CYAN, C_BLACK, 200));
+    frame.drawRoundRect(x - 1, y - 1, tw + 2, th + 2, 6, lerp565(C_CYAN, C_BLACK, 130));
+    frame.fillRoundRect(x, y, tw, th, 5, bg);
+    frame.drawRoundRect(x, y, tw, th, 5, C_CYAN);
+    frame.drawRoundRect(x + 1, y + 1, tw - 2, th - 2, 4, lerp565(C_CYAN, C_WHITE, 90));
   } else {
-    frame.fillRoundRect(x, y, 94, 50, 5, bg);
-    frame.drawRoundRect(x, y, 94, 50, 5, C_TILE_LINE);
+    frame.fillRoundRect(x, y, tw, th, 5, bg);
+    frame.drawRoundRect(x, y, tw, th, 5, C_TILE_LINE);
   }
 
   printText(x + 6, y + 6, String(idx + 1), selected ? C_CYAN : C_DIM, 1);
-  drawSimpleIcon(idx, x + 47, y + 18, C_WHITE);
+  drawSimpleIcon(idx, x + tw / 2, y + 24, C_WHITE);
 
   String name = deckLabels[idx];
-  int16_t x1, y1; uint16_t tw, th;
+  int16_t x1, y1; uint16_t bounds_tw, bounds_th;
   frame.setTextSize(1);
-  frame.getTextBounds(name, 0, 0, &x1, &y1, &tw, &th);
-  printText(x + (94 - tw) / 2, y + 38, name, selected ? C_WHITE : C_DIM, 1);
+  frame.getTextBounds(name, 0, 0, &x1, &y1, &bounds_tw, &bounds_th);
+  printText(x + (tw - bounds_tw) / 2, y + 50, name, selected ? C_WHITE : C_DIM, 1);
 }
 
 void drawDeckPage() {
   drawDeskooBackground();
   drawTopBar("STREAM DECK", 1);
 
-  drawDeckTile(0, 8,   39);
-  drawDeckTile(1, 113, 39);
-  drawDeckTile(2, 218, 39);
-  drawDeckTile(3, 8,   95);
-  drawDeckTile(4, 113, 95);
-  drawDeckTile(5, 218, 95);
-  drawDeckTile(6, 8,   151);
-  drawDeckTile(7, 113, 151);
-  drawDeckTile(8, 218, 151);
-
-  printText(9, 211, "Ctrl+Shift+1-9 / Enter", C_DIM, 1);
+  drawDeckTile(0, 6,   35);
+  drawDeckTile(1, 111, 35);
+  drawDeckTile(2, 216, 35);
+  drawDeckTile(3, 6,   103);
+  drawDeckTile(4, 111, 103);
+  drawDeckTile(5, 216, 103);
+  drawDeckTile(6, 6,   171);
+  drawDeckTile(7, 111, 171);
+  drawDeckTile(8, 216, 171);
 }
 
 // ----------------------- RABBIT PAGE --------------------------
@@ -512,307 +468,118 @@ const char* rabbitMoodLabel() {
   return "CARROT SNACK";
 }
 
-void drawShamsherBackdrop() {
-  int activePulse = (rabbitMood == RABBIT_MUSIC)
-    ? (int)((sinf(rabbitPhase * 2.2f) + 1.0f) * 9.0f)
-    : (int)((sinf(rabbitPhase * 0.8f) + 1.0f) * 3.0f);
-
-  frame.fillCircle(160, 132, 82 + activePulse, C_MAROON);
-  frame.fillCircle(160, 132, 67 + activePulse / 2, C_CORAL);
-  frame.drawCircle(160, 132, 91 + activePulse, C_PANEL2);
-  frame.drawCircle(160, 132, 105 + activePulse / 2, C_CRIMSON);
-
-  for (int i = 0; i < 18; i++) {
-    float a = rabbitPhase * ((rabbitMood == RABBIT_MUSIC) ? 1.35f : 0.32f) + i * 0.58f;
-    int x = 160 + (int)(cosf(a) * (70 + (i % 4) * 18));
-    int y = 134 + (int)(sinf(a) * (40 + (i % 3) * 12));
-    uint16_t c = (i % 3 == 0) ? C_GLOW : ((i % 3 == 1) ? C_CYAN : C_RABBIT_SHADE);
-    frame.fillCircle(x, y, (rabbitMood == RABBIT_MUSIC) ? 2 : 1, c);
-  }
-
+// Mood overlays drawn on top of the sprite
+void drawShamserMoodOverlay() {
   if (rabbitMood == RABBIT_SLEEP) {
-    // Crescent moon - bigger with soft glow halo
-    frame.fillCircle(42, 62, 20, lerp565(C_YELLOW, C_WHITE, 40));
-    frame.fillCircle(42, 62, 17, C_YELLOW);
-    frame.fillCircle(54, 56, 17, lerp565(C_GRAD_TOP, C_BG, 30)); // bite = crescent
-    // Stars near moon
-    frame.fillCircle(72, 44, 2, C_WHITE);
-    frame.fillCircle(26, 44, 2, C_DIM);
-    frame.fillCircle(80, 66, 1, C_DIM);
-    // Animated ZZZ
-    printText(244, 54, "Z", C_WHITE, 2);
-    printText(263, 38, "Z", C_DIM, 2);
-    printText(279, 28, "z", C_DIM, 1);
+    // Crescent moon — use exact image background colour (0xFA06) for the bite
+    // so the crescent looks clean over the sprite
+    frame.fillCircle(36, 70, 18, lerp565(C_YELLOW, C_WHITE, 50)); // outer glow
+    frame.fillCircle(36, 70, 15, C_YELLOW);                        // moon body
+    frame.fillCircle(48, 64, 15, 0xFA06);                          // bite = crescent
+    // Stars
+    frame.fillCircle(68, 50, 2, C_WHITE);
+    frame.fillCircle(20, 52, 2, C_DIM);
+    frame.fillCircle(76, 74, 1, C_WHITE);
+    frame.fillCircle(10, 80, 1, C_DIM);
+    // Drifting ZZZ — positioned near the rabbit's head (right side, mid-height)
+    int zOff = (int)(rabbitPhase * 4.0f) % 24;
+    printText(248, 130 - zOff,      "Z", C_WHITE, 2);
+    printText(264, 114 - zOff - 8,  "Z", lerp565(C_WHITE, C_BG, 120), 2);
+    printText(276, 102 - zOff - 14, "z", lerp565(C_WHITE, C_BG, 190), 1);
+
   } else if (rabbitMood == RABBIT_EAT) {
-    frame.fillCircle(42, 61, 8, C_CARROT);
-    frame.fillTriangle(37, 52, 48, 52, 42, 43, C_LEAF);
-    frame.fillCircle(286, 61, 7, C_LEAF);
-    frame.fillRoundRect(278, 66, 22, 5, 3, C_CARROT);
-  } else {
-    for (int i = 0; i < 16; i++) {
-      float s = sinf(rabbitPhase * 2.3f + i * 0.52f);
-      int amp = 7 + (int)((s + 1.0f) * 12.0f);
-      int x = 8 + i * 20;
-      frame.fillRoundRect(x, 219 - amp, 8, amp, 4, (i % 2) ? C_CYAN : C_GLOW);
+    // Carrot crumbs falling from the actual bite point (canvas y=88, x~186)
+    const int crumbX[6] = { 178, 190, 200, 172, 210, 184 };
+    const int crumbCol[6] = { 0, 1, 2, 0, 2, 1 }; // 0=carrot 1=yellow 2=orange
+    for (int i = 0; i < 6; i++) {
+      float fall = fmodf(rabbitPhase * 1.8f + i * 0.7f, 3.14159f * 2.0f);
+      int cy2 = 125 + (int)(fall * 9.0f); // falls from canvas y=125 downwards
+      int size = 4;
+      if (fall > 4.5f) size = 2; // shrink as they fall further
+      if (fall > 5.5f) size = 0; // disappear before wrapping
+      
+      if (size > 0 && cy2 >= 0 && cy2 < H) {
+        uint16_t cc = (crumbCol[i] == 0) ? C_CARROT
+                    : (crumbCol[i] == 1) ? C_YELLOW : C_ORANGE;
+        frame.fillRect(crumbX[i], cy2, size, size, cc);
+      }
+    }
+
+  } else if (rabbitMood == RABBIT_MUSIC) {
+    const int noteX[3] = { 260, 40, 220 };
+    for (int i = 0; i < 3; i++) {
+      float phase = fmodf(rabbitPhase * 1.5f + i * 2.1f, 3.14159f * 2.0f);
+      int ny = 160 - (int)(phase * 15.0f); // Float up from 160 to ~60
+      if (ny > 50 && ny < 200) {
+        int nx = noteX[i] + (int)(sinf(phase * 4.0f) * 10.0f); // drift horizontally
+        
+        uint16_t color = (i == 0) ? C_CYAN : (i == 1) ? C_PINK : C_YELLOW;
+        
+        // draw a simple music note
+        frame.fillCircle(nx, ny, 4, color);
+        frame.fillCircle(nx + 8, ny - 2, 4, color);
+        frame.fillRect(nx + 2, ny - 12, 2, 12, color);
+        frame.fillRect(nx + 10, ny - 14, 2, 12, color);
+        frame.fillRect(nx + 2, ny - 14, 10, 4, color);
+      }
     }
   }
 }
 
-// Cheek blush + freckle dots, positioned relative to head center (hx, hy)
-void drawRabbitSpeckles(int hx, int hy) {
-  // Soft blush ovals on cheeks
-  frame.fillEllipse(hx - 22, hy + 11, 10, 6, C_PINK);
-  frame.fillEllipse(hx + 22, hy + 11, 10, 6, C_PINK);
-  // Tiny freckle dots
-  for (int i = 0; i < 4; i++) {
-    frame.fillCircle(hx - 26 + i * 3, hy + 7 - (i % 2), 1, C_RABBIT_SHADE);
-    frame.fillCircle(hx + 14 + i * 3, hy + 7 - (i % 2), 1, C_RABBIT_SHADE);
-  }
-}
+// Draw full-bleed sprite with per-pixel brightness animation
+void drawRabbitSprite() {
+  const int SPRITE_Y = 29;
 
-void drawRabbitFace(int hx, int hy) {
-  bool eyesClosed = rabbitMood == RABBIT_SLEEP || rabbitBlink > 0;
-  bool eating     = rabbitMood == RABBIT_EAT;
-  bool music      = rabbitMood == RABBIT_MUSIC;
-
-  // --- Eyes ---
-  if (eyesClosed) {
-    // Soft closed-eye arcs
-    for (int d = 0; d <= 1; d++) {
-      frame.drawFastHLine(hx - 20, hy - 9 + d, 10, C_BLACK);
-      frame.drawFastHLine(hx + 10, hy - 9 + d, 10, C_BLACK);
-    }
-    // Eyelashes
-    frame.drawLine(hx - 20, hy - 9, hx - 23, hy - 13, C_BLACK);
-    frame.drawLine(hx - 15, hy - 9, hx - 15, hy - 13, C_BLACK);
-    frame.drawLine(hx + 10, hy - 9, hx + 7,  hy - 13, C_BLACK);
-    frame.drawLine(hx + 19, hy - 9, hx + 22, hy - 13, C_BLACK);
-  } else {
-    // Big round eyes with shine and colored iris
-    frame.fillCircle(hx - 13, hy - 8, 7, C_BLACK);
-    frame.fillCircle(hx + 13, hy - 8, 7, C_BLACK);
-    // Shine highlight
-    frame.fillCircle(hx - 10, hy - 11, 2, C_WHITE);
-    frame.fillCircle(hx + 16, hy - 11, 2, C_WHITE);
-    // Colored iris
-    uint16_t irisCol = music ? C_CYAN : (eating ? C_CARROT : 0x39C7);
-    frame.fillCircle(hx - 13, hy - 8, 3, irisCol);
-    frame.fillCircle(hx + 13, hy - 8, 3, irisCol);
-    // Music sparkle cross above eyes
-    if (music) {
-      frame.drawLine(hx - 13, hy - 16, hx - 13, hy - 19, C_CYAN);
-      frame.drawLine(hx + 13, hy - 16, hx + 13, hy - 19, C_CYAN);
-      frame.drawLine(hx - 16, hy - 15, hx - 10, hy - 15, C_CYAN);
-      frame.drawLine(hx + 10, hy - 15, hx + 16, hy - 15, C_CYAN);
-    }
-  }
-
-  // --- Nose ---
-  frame.fillEllipse(hx, hy + 5, 5, 4, C_PINK);
-  frame.fillEllipse(hx, hy + 4, 3, 2, C_CORAL);
-
-  // --- Mouth ---
-  if (eating) {
-    int chew = (int)(sinf(rabbitPhase * 3.5f) * 2.0f);
-    frame.fillEllipse(hx, hy + 13 + chew, 7, 5, 0x8000);
-    frame.fillEllipse(hx + 1, hy + 13 + chew, 5, 3, C_CARROT);
-    frame.drawLine(hx - 7, hy + 9, hx - 1, hy + 12 + chew, C_BLACK);
-    frame.drawLine(hx + 7, hy + 9, hx + 1, hy + 12 + chew, C_BLACK);
-  } else {
-    // Cute W-shaped mouth
-    frame.drawLine(hx - 7, hy + 9, hx - 3, hy + 14, C_BLACK);
-    frame.drawLine(hx - 3, hy + 14, hx + 3, hy + 11, C_BLACK);
-    frame.drawLine(hx + 3, hy + 11, hx + 7, hy + 14, C_BLACK);
-  }
-
-  // --- Whiskers ---
-  frame.drawLine(hx - 5, hy + 7, hx - 27, hy + 4, C_RABBIT_SHADE);
-  frame.drawLine(hx - 5, hy + 9, hx - 27, hy + 11, C_RABBIT_SHADE);
-  frame.drawLine(hx + 5, hy + 7, hx + 27, hy + 4, C_RABBIT_SHADE);
-  frame.drawLine(hx + 5, hy + 9, hx + 27, hy + 11, C_RABBIT_SHADE);
-}
-
-// Vertical carrot held upright — x,y is top of carrot body
-void drawCarrot(int x, int y) {
-  // Body: tapered orange column
-  for (int i = 0; i < 26; i++) {
-    int w = 11 - (i * 10) / 26;
-    if (w < 1) w = 1;
-    frame.drawFastHLine(x - w / 2, y + i, w, C_CARROT);
-  }
-  // Highlight stripe
-  frame.drawLine(x - 2, y + 1, x - 3, y + 20, C_YELLOW);
-  frame.drawLine(x - 1, y + 1, x - 2, y + 21, lerp565(C_CARROT, C_YELLOW, 100));
-  // Tip
-  frame.fillCircle(x, y + 26, 2, lerp565(C_CARROT, C_RED, 100));
-  // Root
-  frame.drawLine(x, y + 27, x + 1, y + 31, C_RABBIT_SHADE);
-  // Leafy tops — 3 leaves fanning upward
-  frame.fillTriangle(x - 3, y,     x - 13, y - 20, x - 1, y - 8,  C_LEAF);
-  frame.fillTriangle(x,     y,     x - 3,  y - 23, x + 8, y - 10, C_LEAF);
-  frame.fillTriangle(x + 3, y,     x + 13, y - 18, x + 6, y - 7,  C_LEAF);
-  // Leaf veins
-  frame.drawLine(x - 9, y - 11, x - 2, y - 4, lerp565(C_LEAF, C_BLACK, 70));
-  frame.drawLine(x,     y - 12, x + 3, y - 4,  lerp565(C_LEAF, C_BLACK, 70));
-}
-
-void drawRabbitCharacter(int cx, int cy) {
-  int bob      = (rabbitMood == RABBIT_SLEEP)
-                   ? (int)(sinf(rabbitPhase * 0.55f) * 1.5f)
-                   : (int)(sinf(rabbitPhase) * 3.5f);
-  int earShift = (int)(sinf(rabbitPhase * 0.75f) * 4.0f);
-  cy += bob;
-
-  // Centered upright rabbit: head directly above body, facing forward
-  int hx = cx;        // head center x
-  int hy = cy - 22;   // head center y
-  int bx = cx;        // body center x
-  int by = cy + 32;   // body center y
-
-  // ---- Ground shadow ----
-  frame.fillEllipse(bx, by + 44, 52, 8, lerp565(C_PANEL, C_BG, 80));
-
-  // ---- Ears drawn BEFORE head so head overlaps the bases ----
   if (rabbitMood == RABBIT_SLEEP) {
-    // Both ears drooping outward — sleepy
-    drawThickLine(hx - 14, hy - 26, hx - 62, hy - 12, 11, C_WHITE);
-    drawThickLine(hx - 13, hy - 25, hx - 60, hy - 10, 5,  C_PINK);
-    drawThickLine(hx + 14, hy - 26, hx + 62, hy - 12, 11, C_WHITE);
-    drawThickLine(hx + 13, hy - 25, hx + 60, hy - 10, 5,  C_PINK);
-  } else {
-    // Both ears upright and gently swaying
-    drawThickLine(hx - 14, hy - 26, hx - 16 + earShift, hy - 90, 11, C_WHITE);
-    drawThickLine(hx - 13, hy - 25, hx - 14 + earShift, hy - 85, 5,  C_PINK);
-    drawThickLine(hx + 14, hy - 26, hx + 16 - earShift, hy - 88, 11, C_WHITE);
-    drawThickLine(hx + 13, hy - 25, hx + 14 - earShift, hy - 83, 5,  C_PINK);
-  }
-
-  // ---- Body ----
-  frame.fillEllipse(bx, by, 44, 36, C_WHITE);
-  frame.drawEllipse(bx, by, 44, 36, C_RABBIT_EDGE);
-  // Soft belly tuft
-  frame.fillEllipse(bx, by + 6, 24, 19, lerp565(C_WHITE, 0xFFFF, 160));
-
-  // ---- Left arm + paw ----
-  frame.fillEllipse(bx - 42, by - 2, 16, 11, C_WHITE);
-  frame.drawEllipse(bx - 42, by - 2, 16, 11, C_RABBIT_EDGE);
-  frame.fillCircle(bx - 54, by + 2, 8, C_WHITE);
-  frame.drawCircle(bx - 54, by + 2, 8, C_RABBIT_EDGE);
-  frame.fillCircle(bx - 51, by + 7, 3, C_RABBIT_SHADE);
-  frame.fillCircle(bx - 57, by + 7, 3, C_RABBIT_SHADE);
-
-  // ---- Right arm + paw (raised when eating) ----
-  if (rabbitMood == RABBIT_EAT) {
-    int paw = (int)(sinf(rabbitPhase * 2.0f) * 3.0f);
-    // Draw carrot first (behind raised arm)
-    drawCarrot(bx + 52, by - 68 + paw);
-    frame.fillEllipse(bx + 44, by - 16 + paw, 16, 11, C_WHITE);
-    frame.drawEllipse(bx + 44, by - 16 + paw, 16, 11, C_RABBIT_EDGE);
-    frame.fillCircle(bx + 56, by - 26 + paw, 8, C_WHITE);
-    frame.drawCircle(bx + 56, by - 26 + paw, 8, C_RABBIT_EDGE);
-  } else {
-    frame.fillEllipse(bx + 42, by - 2, 16, 11, C_WHITE);
-    frame.drawEllipse(bx + 42, by - 2, 16, 11, C_RABBIT_EDGE);
-    frame.fillCircle(bx + 54, by + 2, 8, C_WHITE);
-    frame.drawCircle(bx + 54, by + 2, 8, C_RABBIT_EDGE);
-    frame.fillCircle(bx + 51, by + 7, 3, C_RABBIT_SHADE);
-    frame.fillCircle(bx + 57, by + 7, 3, C_RABBIT_SHADE);
-  }
-
-  // ---- Feet ----
-  frame.fillEllipse(bx - 24, by + 40, 22, 13, C_WHITE);
-  frame.drawEllipse(bx - 24, by + 40, 22, 13, C_RABBIT_EDGE);
-  frame.fillCircle(bx - 30, by + 47, 3, C_RABBIT_SHADE);
-  frame.fillCircle(bx - 22, by + 49, 3, C_RABBIT_SHADE);
-  frame.fillCircle(bx - 14, by + 47, 3, C_RABBIT_SHADE);
-
-  frame.fillEllipse(bx + 24, by + 40, 22, 13, C_WHITE);
-  frame.drawEllipse(bx + 24, by + 40, 22, 13, C_RABBIT_EDGE);
-  frame.fillCircle(bx + 18, by + 47, 3, C_RABBIT_SHADE);
-  frame.fillCircle(bx + 26, by + 49, 3, C_RABBIT_SHADE);
-  frame.fillCircle(bx + 34, by + 47, 3, C_RABBIT_SHADE);
-
-  // ---- Head ----
-  frame.fillEllipse(hx, hy, 40, 34, C_WHITE);
-  frame.drawEllipse(hx, hy, 40, 34, C_RABBIT_EDGE);
-  // Subtle top-left highlight on head
-  frame.drawEllipse(hx - 5, hy - 8, 20, 12, lerp565(C_WHITE, 0xFFFF, 160));
-
-  drawRabbitSpeckles(hx, hy);
-  drawRabbitFace(hx, hy);
-
-  // ---- Headphones (RABBIT_MUSIC only) ----
-  if (rabbitMood == RABBIT_MUSIC) {
-    uint8_t gPhase = (uint8_t)((sinf(rabbitPhase * 2.0f) + 1.0f) * 127.5f);
-    uint16_t glowCol = lerp565(C_CYAN, C_GLOW, gPhase);
-
-    // Thick headband arc over the head (elliptical: rx=46, ry=40)
-    for (int a = 20; a <= 160; a += 5) {
-      float rad = (float)a * 3.14159f / 180.0f;
-      int px = hx + (int)(cosf(rad) * 46);
-      int py = hy - (int)(sinf(rad) * 40);
-      frame.fillCircle(px, py, 6, C_DIM);
-    }
-    // Inner band highlight
-    for (int a = 35; a <= 145; a += 8) {
-      float rad = (float)a * 3.14159f / 180.0f;
-      int px = hx + (int)(cosf(rad) * 46);
-      int py = hy - (int)(sinf(rad) * 40);
-      frame.fillCircle(px, py, 2, C_PANEL2);
+    // Smooth breathing: continuous float lerp, no integer quantization
+    float breath = (sinf(rabbitPhase * 0.55f) + 1.0f) * 0.5f; // 0.0 .. 1.0
+    // On inhale (breath>0.5) brighten slightly, on exhale darken slightly
+    uint8_t brightAmt = (breath > 0.5f) ? (uint8_t)((breath - 0.5f) * 2.0f * 30.0f) : 0;
+    uint8_t darkAmt   = (breath < 0.5f) ? (uint8_t)((0.5f - breath) * 2.0f * 20.0f) : 0;
+    for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
+      int canvasY = SPRITE_Y + dy;
+      if (canvasY < 0 || canvasY >= H) continue;
+      for (int dx = 0; dx < RABBIT_SPRITE_W; dx++) {
+        uint16_t px = pgm_read_word(&RABBIT_SLEEP_BMP[dy * RABBIT_SPRITE_W + dx]);
+        if (brightAmt > 0) px = lerp565(px, C_WHITE, brightAmt);
+        if (darkAmt   > 0) px = lerp565(px, C_BLACK, darkAmt);
+        frame.drawPixel(dx, canvasY, px);
+      }
     }
 
-    // Left ear cup — shell, foam, grille, glow ring
-    int lcx = hx - 47, lcy = hy + 2;
-    frame.fillCircle(lcx, lcy, 16, C_DIM);
-    frame.fillCircle(lcx, lcy, 12, 0x2104);
-    frame.fillCircle(lcx, lcy, 8,  C_PANEL);
-    frame.drawCircle(lcx, lcy, 16, glowCol);
-    frame.drawCircle(lcx, lcy, 17, lerp565(glowCol, C_BLACK, 180));
-    for (int gx = -1; gx <= 1; gx++)
-      for (int gy = -1; gy <= 1; gy++)
-        frame.fillCircle(lcx + gx * 4, lcy + gy * 4, 1, lerp565(C_DIM, glowCol, 60));
+  } else if (rabbitMood == RABBIT_MUSIC) {
+    // Raw bitmap — no white animation
+    for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
+      int canvasY = SPRITE_Y + dy;
+      if (canvasY < 0 || canvasY >= H) continue;
+      for (int dx = 0; dx < RABBIT_SPRITE_W; dx++) {
+        frame.drawPixel(dx, canvasY,
+          pgm_read_word(&RABBIT_MUSIC_BMP[dy * RABBIT_SPRITE_W + dx]));
+      }
+    }
 
-    // Right ear cup
-    int rcx = hx + 47, rcy = hy + 2;
-    frame.fillCircle(rcx, rcy, 16, C_DIM);
-    frame.fillCircle(rcx, rcy, 12, 0x2104);
-    frame.fillCircle(rcx, rcy, 8,  C_PANEL);
-    frame.drawCircle(rcx, rcy, 16, glowCol);
-    frame.drawCircle(rcx, rcy, 17, lerp565(glowCol, C_BLACK, 180));
-    for (int gx = -1; gx <= 1; gx++)
-      for (int gy = -1; gy <= 1; gy++)
-        frame.fillCircle(rcx + gx * 4, rcy + gy * 4, 1, lerp565(C_DIM, glowCol, 60));
+  } else { // RABBIT_EAT
+    // Raw bitmap — no white animation
+    for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
+      int canvasY = SPRITE_Y + dy;
+      if (canvasY < 0 || canvasY >= H) continue;
+      for (int dx = 0; dx < RABBIT_SPRITE_W; dx++) {
+        frame.drawPixel(dx, canvasY,
+          pgm_read_word(&RABBIT_EAT_BMP[dy * RABBIT_SPRITE_W + dx]));
+      }
+    }
   }
 }
 
 void drawRabbitPage() {
-  drawDeskooBackground(rabbitMood == RABBIT_MUSIC ? 24 : 10);
   drawTopBar("SHAMSHER", 2);
-
-  drawShamsherBackdrop();
-
-  centerText(38, rabbitMoodLabel(), rabbitMood == RABBIT_MUSIC ? C_GLOW : C_DIM, 1);
-
-  drawRabbitCharacter(158, 126);
-
-  // Smooth deterministic visualizer at bottom (shifted down to clear rabbit feet)
-  if (rabbitMood == RABBIT_MUSIC) {
-    for (int i = 0; i < 12; i++) {
-      float s = sinf(rabbitPhase * 1.7f + i * 0.63f);
-      float t = sinf(rabbitPhase * 0.9f + i * 1.13f);
-      int amp = 14 + (int)((s + t + 2.0f) * 6.0f);
-      amp = constrain(amp, 4, 36);
-      int x = 11 + i * 26;
-      uint16_t c = (i % 2) ? C_CRIMSON : C_CYAN;
-      frame.fillRoundRect(x, 224 - amp, 9, amp, 4, c);
-    }
-  } else {
-    for (int i = 0; i < 11; i++) {
-      int x = 20 + i * 27;
-      int y = 222 - (i % 4) * 2;
-      frame.fillRoundRect(x, y, 10, 3, 2, C_PANEL2);
-    }
-  }
+  drawRabbitSprite();
+  // Semi-transparent dark pill behind mood label
+  frame.fillRoundRect(90, 31, 140, 14, 4, lerp565(C_BLACK, C_BG, 60));
+  centerText(33, rabbitMoodLabel(),
+             (rabbitMood == RABBIT_MUSIC) ? C_CYAN :
+             (rabbitMood == RABBIT_SLEEP) ? C_YELLOW : C_WHITE, 1);
+  drawShamserMoodOverlay();
 }
 
 // ---------------------- RENDER -------------------------------

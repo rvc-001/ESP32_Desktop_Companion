@@ -66,13 +66,13 @@ stop_event = threading.Event()
 DECK_ACTIONS = [
     "WhatsApp",
     "Zen Browser",
-    "VS Code",
+    "Brave",
     "Apple Music",
-    "Previous Track",
-    "Play/Pause",
-    "Next Track",
+    "VS Code",
+    "Antigravity",
+    "File Explorer",
+    "Notepad",
     "Lock PC",
-    "Shutdown",
 ]
 
 
@@ -209,6 +209,18 @@ user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
 user32.ShowWindow.restype = ctypes.c_bool
 user32.SetForegroundWindow.argtypes = [wintypes.HWND]
 user32.SetForegroundWindow.restype = ctypes.c_bool
+
+user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+user32.SetWindowPos.restype = ctypes.c_bool
+
+user32.GetForegroundWindow.argtypes = []
+user32.GetForegroundWindow.restype = wintypes.HWND
+
+user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, ctypes.c_bool]
+user32.AttachThreadInput.restype = ctypes.c_bool
+
+kernel32.GetCurrentThreadId.argtypes = []
+kernel32.GetCurrentThreadId.restype = wintypes.DWORD
 kernel32.OpenProcess.argtypes = [wintypes.DWORD, ctypes.c_bool, wintypes.DWORD]
 kernel32.OpenProcess.restype = wintypes.HANDLE
 kernel32.QueryFullProcessImageNameW.argtypes = [
@@ -280,7 +292,25 @@ def focus_existing_window(
 
         if process_match or title_match:
             user32.ShowWindow(hwnd, SW_RESTORE)
-            user32.SetForegroundWindow(hwnd)
+            
+            fg_hwnd = user32.GetForegroundWindow()
+            if fg_hwnd != hwnd:
+                current_thread = kernel32.GetCurrentThreadId()
+                fg_thread = user32.GetWindowThreadProcessId(fg_hwnd, None)
+                
+                if current_thread != fg_thread:
+                    user32.AttachThreadInput(current_thread, fg_thread, True)
+                    user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 3) # HWND_TOPMOST
+                    user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 3) # HWND_NOTOPMOST
+                    user32.SetForegroundWindow(hwnd)
+                    user32.AttachThreadInput(current_thread, fg_thread, False)
+                else:
+                    user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 3) # HWND_TOPMOST
+                    user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 3) # HWND_NOTOPMOST
+                    user32.SetForegroundWindow(hwnd)
+            else:
+                user32.SetForegroundWindow(hwnd)
+                
             print(f"[focus] {title}")
             return True
 
@@ -316,8 +346,29 @@ def launch_zen_browser() -> None:
         Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Zen Browser" / "zen.exe",
         Path(os.environ.get("ProgramFiles(x86)", "")) / "Zen Browser" / "zen.exe",
     ]
-    if not launch_first_existing(candidates, "https://www.google.com/"):
-        webbrowser.open("https://www.google.com/")
+    if not launch_first_existing(candidates):
+        try:
+            subprocess.Popen(["zen"], shell=True)
+        except OSError:
+            pass
+
+def launch_brave() -> None:
+    if focus_existing_window(
+        process_names=("brave.exe",),
+        title_keywords=(" - brave", "brave browser"),
+    ):
+        return
+
+    candidates = [
+        Path(os.environ.get("ProgramFiles", "")) / "BraveSoftware" / "Brave-Browser" / "Application" / "brave.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "BraveSoftware" / "Brave-Browser" / "Application" / "brave.exe",
+        Path(os.environ.get("ProgramFiles(x86)", "")) / "BraveSoftware" / "Brave-Browser" / "Application" / "brave.exe",
+    ]
+    if not launch_first_existing(candidates):
+        try:
+            subprocess.Popen(["brave"], shell=True)
+        except OSError:
+            pass
 
 
 def launch_apple_music() -> None:
@@ -354,6 +405,30 @@ def launch_vs_code() -> None:
         return
     subprocess.Popen(["code"], shell=True)
 
+def launch_antigravity() -> None:
+    if focus_existing_window(
+        process_names=("antigravity.exe", "electron.exe", "agy.exe"),
+        title_keywords=("antigravity",),
+    ):
+        return
+    subprocess.Popen(["agy", "ide"], shell=True)
+
+def launch_file_explorer() -> None:
+    if focus_existing_window(
+        process_names=("explorer.exe",),
+        title_keywords=("file explorer",),
+    ):
+        return
+    subprocess.Popen(["explorer.exe"], shell=False)
+
+def launch_notepad() -> None:
+    if focus_existing_window(
+        process_names=("notepad.exe",),
+        title_keywords=(" - notepad",),
+    ):
+        return
+    subprocess.Popen(["notepad.exe"], shell=False)
+
 
 def run_action(action: str):
     print("[action]", action)
@@ -365,32 +440,29 @@ def run_action(action: str):
         elif action == "Zen Browser":
             launch_zen_browser()
 
-        elif action == "VS Code":
-            launch_vs_code()
+        elif action == "Brave":
+            launch_brave()
 
         elif action == "Apple Music":
             launch_apple_music()
 
-        elif action == "Previous Track":
-            run_media_control("previous")
+        elif action == "VS Code":
+            launch_vs_code()
 
-        elif action == "Play/Pause":
-            run_media_control("play_pause")
+        elif action == "Antigravity":
+            launch_antigravity()
 
-        elif action == "Next Track":
-            run_media_control("next")
+        elif action == "File Explorer":
+            launch_file_explorer()
+
+        elif action == "Notepad":
+            launch_notepad()
 
         elif action == "Lock PC":
             subprocess.Popen(
                 ["rundll32.exe", "user32.dll,LockWorkStation"],
                 shell=False
             )
-
-        elif action == "Shutdown":
-            # Safety: while developing, this is intentionally only a warning.
-            # Replace the next line with the commented shutdown command when ready.
-            print("[shutdown] requested - disabled during development")
-            # subprocess.Popen(["shutdown", "/s", "/t", "0"], shell=False)
 
     except Exception as exc:
         print("[action error]", exc)
@@ -429,6 +501,15 @@ def setup_hotkeys():
         "<ctrl>+<shift>+7": lambda: trigger_deck_item(6),
         "<ctrl>+<shift>+8": lambda: trigger_deck_item(7),
         "<ctrl>+<shift>+9": lambda: trigger_deck_item(8),
+        "<ctrl>+<shift>+<97>": lambda: trigger_deck_item(0),
+        "<ctrl>+<shift>+<98>": lambda: trigger_deck_item(1),
+        "<ctrl>+<shift>+<99>": lambda: trigger_deck_item(2),
+        "<ctrl>+<shift>+<100>": lambda: trigger_deck_item(3),
+        "<ctrl>+<shift>+<101>": lambda: trigger_deck_item(4),
+        "<ctrl>+<shift>+<102>": lambda: trigger_deck_item(5),
+        "<ctrl>+<shift>+<103>": lambda: trigger_deck_item(6),
+        "<ctrl>+<shift>+<104>": lambda: trigger_deck_item(7),
+        "<ctrl>+<shift>+<105>": lambda: trigger_deck_item(8),
         "<ctrl>+!": lambda: trigger_deck_item(0),
         "<ctrl>+@": lambda: trigger_deck_item(1),
         "<ctrl>+#": lambda: trigger_deck_item(2),
