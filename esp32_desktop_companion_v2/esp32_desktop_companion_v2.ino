@@ -1,6 +1,7 @@
 
 #include <Arduino_GFX_Library.h>
 #include <Adafruit_GFX.h>
+#include "boot_screen.h"
 #include "rabbit_sprites.h"
 #include "app_icons.h"
 
@@ -111,7 +112,7 @@ uint8_t musicControlSelection = 1;
 uint32_t lastFrameMs = 0;
 uint32_t lastHeartbeatMs = 0;
 uint32_t lastMusicTickMs = 0;
-float rabbitPhase = 0.0f;
+float uiPhase = 0.0f;
 uint8_t rabbitBlink = 0;
 uint32_t nextBlinkMs = 0;
 
@@ -351,7 +352,8 @@ void drawTransportButton(int cx, int cy, int kind, bool primary, bool selected) 
 }
 
 void drawMusicPage() {
-  drawDeskooBackground();
+  uint8_t pulse = songPlaying ? (uint8_t)((sinf(uiPhase * 1.5f) + 1.0f) * 40.0f) : 0;
+  drawDeskooBackground(pulse);
   drawTopBar("MUSIC", 0);
 
   drawAlbumArt();
@@ -424,9 +426,10 @@ void drawDeckTile(int idx, int x, int y) {
   int th = 62;
 
   if (selected) {
-    // Multi-layer outer glow halo
-    frame.drawRoundRect(x - 2, y - 2, tw + 4, th + 4, 7, lerp565(C_CYAN, C_BLACK, 200));
-    frame.drawRoundRect(x - 1, y - 1, tw + 2, th + 2, 6, lerp565(C_CYAN, C_BLACK, 130));
+    // Breathing outer glow halo
+    uint8_t breath = (uint8_t)((sinf(uiPhase * 2.0f) + 1.0f) * 60.0f); // 0 to 120
+    frame.drawRoundRect(x - 2, y - 2, tw + 4, th + 4, 7, lerp565(C_CYAN, C_BLACK, 135 + breath));
+    frame.drawRoundRect(x - 1, y - 1, tw + 2, th + 2, 6, lerp565(C_CYAN, C_BLACK, 70 + breath));
     frame.fillRoundRect(x, y, tw, th, 5, bg);
     frame.drawRoundRect(x, y, tw, th, 5, C_CYAN);
     frame.drawRoundRect(x + 1, y + 1, tw - 2, th - 2, 4, lerp565(C_CYAN, C_WHITE, 90));
@@ -471,51 +474,74 @@ const char* rabbitMoodLabel() {
 // Mood overlays drawn on top of the sprite
 void drawShamserMoodOverlay() {
   if (rabbitMood == RABBIT_SLEEP) {
-    // Crescent moon — use exact image background colour (0xFA06) for the bite
-    // so the crescent looks clean over the sprite
-    frame.fillCircle(36, 70, 18, lerp565(C_YELLOW, C_WHITE, 50)); // outer glow
-    frame.fillCircle(36, 70, 15, C_YELLOW);                        // moon body
-    frame.fillCircle(48, 64, 15, 0xFA06);                          // bite = crescent
+    // Crescent moon - geometrically drawn to prevent background mismatch
+    int cx = 36, cy = 70, cr = 18, inner_r = 15;
+    int bx = 47, by = 64, br = 17; // Bite coordinates and size
+    for (int y = cy - cr; y <= cy + cr; y++) {
+      for (int x = cx - cr; x <= cx + cr; x++) {
+        int distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (distSq <= cr * cr) {
+          // Only draw if outside the 'bite' circle
+          if ((x - bx) * (x - bx) + (y - by) * (y - by) > br * br) {
+             if (distSq <= inner_r * inner_r) {
+                frame.drawPixel(x, y, C_YELLOW);
+             } else {
+                frame.drawPixel(x, y, lerp565(C_YELLOW, C_WHITE, 50));
+             }
+          }
+        }
+      }
+    }
     // Stars
     frame.fillCircle(68, 50, 2, C_WHITE);
     frame.fillCircle(20, 52, 2, C_DIM);
     frame.fillCircle(76, 74, 1, C_WHITE);
     frame.fillCircle(10, 80, 1, C_DIM);
-    // Drifting ZZZ — positioned near the rabbit's head (right side, mid-height)
-    int zOff = (int)(rabbitPhase * 4.0f) % 24;
-    printText(248, 130 - zOff,      "Z", C_WHITE, 2);
-    printText(264, 114 - zOff - 8,  "Z", lerp565(C_WHITE, C_BG, 120), 2);
-    printText(276, 102 - zOff - 14, "z", lerp565(C_WHITE, C_BG, 190), 1);
+    
+    // Drifting ZZZ
+    int zOff = (int)(uiPhase * 4.0f) % 30; // Increased distance
+    uint8_t fade1 = (zOff < 24) ? 255 - (zOff * 10) : 0;
+    uint8_t fade2 = (zOff < 16) ? 255 - (zOff * 15) : 0;
+    uint8_t fade3 = (zOff < 10) ? 255 - (zOff * 25) : 0;
+    
+    if (fade1 > 0) printText(248, 130 - zOff,      "Z", lerp565(C_BG, C_WHITE, fade1), 2);
+    if (fade2 > 0) printText(264, 114 - zOff - 8,  "Z", lerp565(C_BG, C_WHITE, fade2), 2);
+    if (fade3 > 0) printText(276, 102 - zOff - 14, "z", lerp565(C_BG, C_WHITE, fade3), 1);
 
   } else if (rabbitMood == RABBIT_EAT) {
-    // Carrot crumbs falling from the actual bite point (canvas y=88, x~186)
+    // Carrot crumbs falling with pseudo-gravity
     const int crumbX[6] = { 178, 190, 200, 172, 210, 184 };
-    const int crumbCol[6] = { 0, 1, 2, 0, 2, 1 }; // 0=carrot 1=yellow 2=orange
+    const int crumbCol[6] = { 0, 1, 2, 0, 2, 1 }; 
     for (int i = 0; i < 6; i++) {
-      float fall = fmodf(rabbitPhase * 1.8f + i * 0.7f, 3.14159f * 2.0f);
-      int cy2 = 125 + (int)(fall * 9.0f); // falls from canvas y=125 downwards
-      int size = 4;
-      if (fall > 4.5f) size = 2; // shrink as they fall further
-      if (fall > 5.5f) size = 0; // disappear before wrapping
-      
-      if (size > 0 && cy2 >= 0 && cy2 < H) {
-        uint16_t cc = (crumbCol[i] == 0) ? C_CARROT
-                    : (crumbCol[i] == 1) ? C_YELLOW : C_ORANGE;
-        frame.fillRect(crumbX[i], cy2, size, size, cc);
+      float t = fmodf(uiPhase * 2.5f + i * 0.9f, 4.0f);
+      if (t < 2.0f) { // Active fall duration
+        float fallDist = t * t * 15.0f; // Gravity acceleration
+        int cy2 = 120 + (int)fallDist;
+        int cx2 = crumbX[i] + (int)(sinf(t * 5.0f) * 3.0f); // slight tumble
+        
+        int size = 4;
+        if (t > 1.2f) size = 3;
+        if (t > 1.5f) size = 2;
+        
+        if (size > 0 && cy2 >= 0 && cy2 < H) {
+          uint16_t cc = (crumbCol[i] == 0) ? C_CARROT : (crumbCol[i] == 1) ? C_YELLOW : C_ORANGE;
+          frame.fillRect(cx2, cy2, size, size, cc);
+        }
       }
     }
 
   } else if (rabbitMood == RABBIT_MUSIC) {
     const int noteX[3] = { 260, 40, 220 };
     for (int i = 0; i < 3; i++) {
-      float phase = fmodf(rabbitPhase * 1.5f + i * 2.1f, 3.14159f * 2.0f);
-      int ny = 160 - (int)(phase * 15.0f); // Float up from 160 to ~60
-      if (ny > 50 && ny < 200) {
-        int nx = noteX[i] + (int)(sinf(phase * 4.0f) * 10.0f); // drift horizontally
+      float phase = fmodf(uiPhase * 1.5f + i * 2.1f, 3.14159f * 2.0f);
+      int ny = 160 - (int)(phase * 18.0f); 
+      if (ny > 40 && ny < 200) {
+        int nx = noteX[i] + (int)(sinf(phase * 4.0f) * 12.0f); 
         
-        uint16_t color = (i == 0) ? C_CYAN : (i == 1) ? C_PINK : C_YELLOW;
+        uint16_t baseColor = (i == 0) ? C_CYAN : (i == 1) ? C_PINK : C_YELLOW;
+        uint8_t alpha = (ny < 80) ? (ny - 40) * 6 : 255; // Fade out near top
+        uint16_t color = lerp565(C_BG, baseColor, alpha);
         
-        // draw a simple music note
         frame.fillCircle(nx, ny, 4, color);
         frame.fillCircle(nx + 8, ny - 2, 4, color);
         frame.fillRect(nx + 2, ny - 12, 2, 12, color);
@@ -531,9 +557,7 @@ void drawRabbitSprite() {
   const int SPRITE_Y = 29;
 
   if (rabbitMood == RABBIT_SLEEP) {
-    // Smooth breathing: continuous float lerp, no integer quantization
-    float breath = (sinf(rabbitPhase * 0.55f) + 1.0f) * 0.5f; // 0.0 .. 1.0
-    // On inhale (breath>0.5) brighten slightly, on exhale darken slightly
+    float breath = (sinf(uiPhase * 0.55f) + 1.0f) * 0.5f; 
     uint8_t brightAmt = (breath > 0.5f) ? (uint8_t)((breath - 0.5f) * 2.0f * 30.0f) : 0;
     uint8_t darkAmt   = (breath < 0.5f) ? (uint8_t)((0.5f - breath) * 2.0f * 20.0f) : 0;
     for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
@@ -546,29 +570,24 @@ void drawRabbitSprite() {
         frame.drawPixel(dx, canvasY, px);
       }
     }
-
   } else if (rabbitMood == RABBIT_MUSIC) {
-    // Raw bitmap — no white animation
     for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
       int canvasY = SPRITE_Y + dy;
       if (canvasY < 0 || canvasY >= H) continue;
       for (int dx = 0; dx < RABBIT_SPRITE_W; dx++) {
-        frame.drawPixel(dx, canvasY,
-          pgm_read_word(&RABBIT_MUSIC_BMP[dy * RABBIT_SPRITE_W + dx]));
+        frame.drawPixel(dx, canvasY, pgm_read_word(&RABBIT_MUSIC_BMP[dy * RABBIT_SPRITE_W + dx]));
       }
     }
-
   } else { // RABBIT_EAT
-    // Raw bitmap — no white animation
     for (int dy = 0; dy < RABBIT_SPRITE_H; dy++) {
       int canvasY = SPRITE_Y + dy;
       if (canvasY < 0 || canvasY >= H) continue;
       for (int dx = 0; dx < RABBIT_SPRITE_W; dx++) {
-        frame.drawPixel(dx, canvasY,
-          pgm_read_word(&RABBIT_EAT_BMP[dy * RABBIT_SPRITE_W + dx]));
+        frame.drawPixel(dx, canvasY, pgm_read_word(&RABBIT_EAT_BMP[dy * RABBIT_SPRITE_W + dx]));
       }
     }
   }
+
 }
 
 void drawRabbitPage() {
@@ -596,25 +615,31 @@ void renderCurrentPage() {
 void transitionTo(Page p) {
   if (p == currentPage) return;
 
-  // 4-frame fade out from current rendered frame
+  // 3-frame rapid fade out for snappy feel
   uint16_t *buf = frame.getBuffer();
-  for (int step = 0; step < 4; step++) {
-    uint8_t t = 70; // darken in-place
+  for (int step = 0; step < 3; step++) {
+    uint8_t t = 80; // darken aggressively
     for (int i = 0; i < W*H; i++) buf[i] = lerp565(buf[i], C_BLACK, t);
     pushFrame();
-    delay(12);
+    // No extra delay needed, pushFrame itself acts as a small delay
   }
 
   currentPage = p;
   renderCurrentPage();
 }
 
+uint32_t lastPageChangeMs = 0;
+
 void nextPage() {
+  if (millis() - lastPageChangeMs < 300) return;
   transitionTo((Page)(((int)currentPage + 1) % 3));
+  lastPageChangeMs = millis(); // Reset debounce AFTER transition completes
 }
 
 void prevPage() {
+  if (millis() - lastPageChangeMs < 300) return;
   transitionTo((Page)(((int)currentPage + 2) % 3));
+  lastPageChangeMs = millis(); // Reset debounce AFTER transition completes
 }
 
 // --------------------- SERIAL PROTOCOL ------------------------
@@ -788,7 +813,7 @@ void readSerial() {
 // -------------------------- SETUP -----------------------------
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(1000000);
   delay(500);
 
   pinMode(LCD_BL, OUTPUT);
@@ -798,13 +823,52 @@ void setup() {
     while (true) delay(1000);
   }
 
-  drawDeskooBackground();
-  frame.fillCircle(160, 113, 58, C_MAROON);
-  frame.drawCircle(160, 113, 70, C_PANEL2);
-  centerText(96, "DESKOO", C_WHITE, 3);
-  centerText(135, "USB READY", C_GREEN, 1);
-  pushFrame();
-  delay(700);
+  // --- Boot screen: full-screen image ---
+  for (int y = 0; y < H; y++) {
+    for (int x = 0; x < W; x++) {
+      frame.drawPixel(x, y, pgm_read_word(&BOOT_SCREEN_BMP[y * W + x]));
+    }
+  }
+  // Phase 1 & 2: Smooth carrot loader
+  for (int i = 0; i <= 100; i++) {
+    // Redraw the bottom portion to clear previous frame
+    for (int y = 190; y < H; y++) {
+      for (int x = 0; x < W; x++) {
+        frame.drawPixel(x, y, pgm_read_word(&BOOT_SCREEN_BMP[y * W + x]));
+      }
+    }
+    
+    // Sleek progress bar (orange track and fill)
+    int pw = (i * 200) / 100;
+    int cy = 208; 
+    
+    // Track background
+    frame.drawRoundRect(60, cy - 2, 200, 4, 2, lerp565(C_BLACK, C_CARROT, 70));
+    // Filled loader
+    if (pw > 0) frame.fillRoundRect(60, cy - 2, pw, 4, 2, C_CARROT);
+    
+    // Draw carrot attached to the moving end
+    int cx = 60 + pw;
+    // Carrot body pointing DOWN
+    frame.fillCircle(cx, cy - 4, 4, C_CARROT); // Thicker top
+    frame.fillTriangle(cx - 4, cy - 4, cx + 4, cy - 4, cx, cy + 7, C_CARROT); // Longer pointy bottom
+    // Carrot leaves sticking UP
+    frame.drawLine(cx, cy - 4, cx - 5, cy - 11, C_LEAF);
+    frame.drawLine(cx, cy - 4, cx + 5, cy - 11, C_LEAF);
+    frame.drawLine(cx, cy - 5, cx, cy - 13, C_LEAF);
+    
+    // Fade text smoothly
+    if (i < 50) {
+      uint8_t alpha = (i * 255) / 50;
+      centerText(224, "SYSTEM INITIALIZING...", lerp565(C_DIM, C_YELLOW, alpha), 1);
+    } else {
+      uint8_t alpha = ((i - 50) * 255) / 50;
+      centerText(224, "USB CONNECTION READY", lerp565(C_DIM, C_GREEN, alpha), 1);
+    }
+    pushFrame();
+    delay(25); // ~2.5 seconds total
+  }
+  delay(100);
 
   renderCurrentPage();
 
@@ -819,25 +883,25 @@ void loop() {
 
   const uint32_t now = millis();
 
-  // 20 FPS animation only on animated pages.
+  // 20 FPS animation on all pages for fluid UI.
   if (now - lastFrameMs >= 50) {
     lastFrameMs = now;
 
     if (currentPage == PAGE_RABBIT) {
-      if (rabbitMood == RABBIT_MUSIC) rabbitPhase += 0.13f;
-      else if (rabbitMood == RABBIT_EAT) rabbitPhase += 0.08f;
-      else rabbitPhase += 0.04f;
-
-      if (rabbitBlink > 0) rabbitBlink--;
-      if (now >= nextBlinkMs && rabbitBlink == 0) {
-        rabbitBlink = 3; // ~150 ms at 20 FPS
-        nextBlinkMs = now + 1600 + random(0, 2400);
-      }
-
-      drawRabbitPage();
-      pushFrame();
+      if (rabbitMood == RABBIT_MUSIC) uiPhase += 0.13f;
+      else if (rabbitMood == RABBIT_EAT) uiPhase += 0.08f;
+      else uiPhase += 0.04f;
+    } else {
+      uiPhase += 0.05f; // Global animation phase
     }
-    // Deck is static, so no pointless full-screen refresh.
+
+    if (rabbitBlink > 0) rabbitBlink--;
+    if (now >= nextBlinkMs && rabbitBlink == 0) {
+      rabbitBlink = 3; // ~150 ms at 20 FPS
+      nextBlinkMs = now + 1600 + random(0, 2400);
+    }
+
+    renderCurrentPage(); // Render all pages to keep animations flowing
   }
 
   if (now - lastHeartbeatMs >= 5000) {

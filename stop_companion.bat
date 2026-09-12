@@ -1,7 +1,7 @@
 @echo off
 echo Stopping Deskoo companion (releases COM port)...
-taskkill /F /IM pythonw.exe /T 2>nul
-taskkill /F /IM python.exe /FI "WINDOWTITLE eq Deskoo*" /T 2>nul
+wmic process where "name='pythonw.exe' and commandline like '%%desktop_companion.py%%'" delete >nul 2>&1
+wmic process where "name='python.exe' and commandline like '%%desktop_companion.py%%'" delete >nul 2>&1
 echo Done! You can now flash via Arduino IDE.
 echo.
 echo Press any key to close this window...

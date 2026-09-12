@@ -50,10 +50,10 @@ import serial
 from serial.tools import list_ports
 from pynput import keyboard
 
-BAUD = 115200
+BAUD = 1000000
 DEVICE_SIGNATURE = "PONG:ESP32-DESKTOP-COMPANION"
-COVER_SIZE = 64
-COVER_CHUNK_PIXELS = 24
+COVER_SIZE = 120
+COVER_CHUNK_PIXELS = 50
 
 # Native ESP32-S3 USB VID is commonly 0x303A.
 # We do not rely only on VID because USB-UART bridge variants differ.
@@ -133,10 +133,11 @@ def try_handshake(port_name: str) -> Optional[serial.Serial]:
         s.reset_input_buffer()
         s.write(b"PING\n")
 
-        deadline = time.time() + 0.8
+        deadline = time.time() + 4.0
         while time.time() < deadline:
+            s.write(b"PING\n")
             line = s.readline().decode(errors="ignore").strip()
-            if DEVICE_SIGNATURE in line:
+            if DEVICE_SIGNATURE in line or "READY:ESP32-DESKTOP-COMPANION" in line:
                 print(f"[connected] {port_name}")
                 return s
 
@@ -776,66 +777,24 @@ def media_thread_worker():
     asyncio.run(media_loop())
 
 
-def startup_file_path() -> Path:
-    startup_dir = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-    return startup_dir / "Deskoo.vbs"
 
-
-def legacy_startup_file_path() -> Path:
-    startup_dir = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-    return startup_dir / "ESP32 Desktop Companion.vbs"
-
-
-def install_startup() -> None:
-    script = Path(__file__).resolve()
-    pythonw = Path(sys.executable)
-    if pythonw.name.lower() == "python.exe":
-        candidate = pythonw.with_name("pythonw.exe")
-        if candidate.exists():
-            pythonw = candidate
-
-    target = startup_file_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        "\n".join([
-            'Set shell = CreateObject("WScript.Shell")',
-            f'shell.CurrentDirectory = "{script.parent}"',
-            f'shell.Run Chr(34) & "{pythonw}" & Chr(34) & " " & Chr(34) & "{script}" & Chr(34) & " --startup", 0, False',
-        ]),
-        encoding="utf-8"
-    )
-
-    legacy = legacy_startup_file_path()
-    if legacy != target and legacy.exists():
-        legacy.unlink()
-    print(f"[startup] installed: {target}")
-
-
-def uninstall_startup() -> None:
-    target = startup_file_path()
-    if target.exists():
-        target.unlink()
-        print(f"[startup] removed: {target}")
-    else:
-        print("[startup] not installed")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deskoo helper")
-    parser.add_argument("--install-startup", action="store_true", help="launch this helper automatically at Windows sign-in")
-    parser.add_argument("--uninstall-startup", action="store_true", help="remove automatic Windows startup launch")
-    parser.add_argument("--startup", action="store_true", help=argparse.SUPPRESS)
+    # No arguments needed anymore
+
     return parser.parse_args()
 
 
 def main():
+    kernel32 = ctypes.windll.kernel32
+    mutex = kernel32.CreateMutexW(None, False, "Global\\DeskooDesktopCompanionMutex")
+    if kernel32.GetLastError() == 183: # ERROR_ALREADY_EXISTS
+        print("Another instance of Deskoo Desktop Companion is already running.")
+        sys.exit(0)
+
     args = parse_args()
-    if args.install_startup:
-        install_startup()
-        return
-    if args.uninstall_startup:
-        uninstall_startup()
-        return
 
     print("Deskoo")
     print("------")

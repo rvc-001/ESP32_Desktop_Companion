@@ -2,9 +2,9 @@ from PIL import Image
 import os
 
 files = {
-    "RABBIT_SLEEP": "rabbit sleep.png",
-    "RABBIT_MUSIC": "rabbit vibing.png",
-    "RABBIT_EAT": "rabbit eat.png"
+    "RABBIT_SLEEP": {"file": "rabbit sleep.png", "shift_down": 0},
+    "RABBIT_MUSIC": {"file": "rabbit vibing.png", "shift_down": 25},
+    "RABBIT_EAT": {"file": "rabbit eat.png", "shift_down": 25}
 }
 
 W = 320
@@ -25,14 +25,16 @@ with open("esp32_desktop_companion_v2/rabbit_sprites.h", "w") as f:
     f.write(f"#define RABBIT_SPRITE_H {H}\n")
     f.write(f"#define RABBIT_SPRITE_PIXELS ({W} * {H})\n\n")
 
-    for name, path in files.items():
+    for name, data in files.items():
+        path = data["file"]
+        shift_down = data["shift_down"]
         print(f"Processing {path}...")
         img = Image.open(path).convert("RGB")
-        # The source images are 4:3 (e.g. 1448x1086).
-        # We resize them to 320x240.
         img = img.resize((320, 240), Image.Resampling.LANCZOS)
-        # We crop the bottom 211 pixels (skip top 29 pixels).
-        img = img.crop((0, OFFSET_Y, W, OFFSET_Y + H))
+        
+        # To shift the image DOWN on the screen, we must crop from a HIGHER point in the original image.
+        crop_top = OFFSET_Y - shift_down
+        img = img.crop((0, crop_top, W, crop_top + H))
         
         f.write(f"static const uint16_t {name}_BMP[RABBIT_SPRITE_PIXELS] PROGMEM = {{\n")
         pixels = []
